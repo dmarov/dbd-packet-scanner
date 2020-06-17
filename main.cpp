@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
             pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
 
-            int port = udpLayer->getUdpHeader()->portSrc;
+            int port = ntohs(udpLayer->getUdpHeader()->portSrc);
 
             if (ports.find(port) != ports.end()) {
                 ports[port]++;

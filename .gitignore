@@ -1,3 +1,4 @@
 dbd-packet-scanner.exe
 main.d
 main.o
+config.json
