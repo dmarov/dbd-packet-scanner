@@ -62,6 +62,9 @@ int main(int argc, char* argv[])
 
         printf("Stoped capturing\n");
 
+        int port_number = -1;
+        int cnt_max = 0;
+
         for (pcpp::RawPacketVector::ConstVectorIterator iter = packetVec.begin(); iter != packetVec.end(); iter++)
         {
             pcpp::Packet parsedPacket(*iter);
@@ -70,8 +73,26 @@ int main(int argc, char* argv[])
 
             int port = udpLayer->getUdpHeader()->portSrc;
 
-            std::cout << port << std::endl;
+            if (ports.find(port) != ports.end()) {
+                ports[port]++;
+            } else {
+                ports[port] = 1;
+            }
+
+
+            for(std::map<int, int>::const_iterator it = ports.begin(); it != ports.end(); ++it)
+            {
+                if (it->second > cnt_max) {
+
+                    cnt_max = it->second;
+                    port_number = it->first;
+                }
+            }
+
         }
+
+        std::cout << port_number << "\n";
+        std::cout << cnt_max << "\n";
     }
     return 0;
 }
