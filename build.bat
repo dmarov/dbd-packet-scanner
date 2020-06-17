@@ -1,0 +1,4 @@
+::C:\MinGW\bin\mingw32-g++.exe -I C:\Users\mds3d\repos\PcapPlusPlus\Dist\header -I C:\Users\mds3d\lib\WpdPack\Include -L C:\Users\mds3d\repos\PcapPlusPlus\Dist -L C:\Users\mds3d\lib\WpdPack\Lib -lPcap++ -lPacket++ -lCommon++ -o dvrt.exe main.cpp
+::C:\MinGW\bin\mingw32-g++.exe -I C:\Users\mds3d\repos\PcapPlusPlus\Dist\header -I C:\Users\mds3d\lib\WpdPack\Include C:\Users\mds3d\repos\PcapPlusPlus\Dist\Packet++.lib -o dvrt.exe main.cpp
+g++.exe  -static-libgcc -static-libstdc++ -DPCAPPP_MINGW_ENV -IC:/Users/mds3d/repos/PcapPlusPlus/Dist/header -IC:/Users/mds3d/lib/WpdPack/Include -O0 -g -Wall -c -fmessage-length=0 -MMD -MP -MF"main.d" -MT"main.d" -o "main.o" "main.cpp"
+g++.exe  -static-libgcc -static-libstdc++ -DPCAPPP_MINGW_ENV -LC:/Users/mds3d/repos/PcapPlusPlus/Dist -LC:/Users/mds3d/lib/WpdPack/lib -LC:/MinGW/lib -o "./dvrt.exe" main.o -lPcap++ -lPacket++ -lCommon++ -lwpcap -lPacket -Wl,-Bstatic -lpthread -Wl,-Bdynamic -lws2_32 -liphlpapi
