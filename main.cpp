@@ -1,6 +1,7 @@
 #include "stdlib.h"
 #include <map>
 #include <iostream>
+#include <fstream>
 
 #if !defined(WIN32) && !defined(WINx64)
 #include <in.h> // this is for using ntohs() and htons() on non-Windows OS's
@@ -52,18 +53,14 @@ int main(int argc, char* argv[])
         pcpp::RawPacketVector packetVec;
         std::map<int, int> ports;
 
-        printf("Started capture\n");
-
         dev->startCapture(packetVec);
 
         PCAP_SLEEP(10);
 
         dev->stopCapture();
 
-        printf("Stoped capturing\n");
-
         int port_number = -1;
-        int cnt_max = 0;
+        int cnt_max = 300;
 
         for (pcpp::RawPacketVector::ConstVectorIterator iter = packetVec.begin(); iter != packetVec.end(); iter++)
         {
@@ -91,8 +88,13 @@ int main(int argc, char* argv[])
 
         }
 
-        std::cout << port_number << "\n";
-        std::cout << cnt_max << "\n";
+        if (port_number != -1) {
+
+            std::ofstream myfile;
+            myfile.open(argv[1], std::ofstream::out | std::ofstream::trunc);
+            myfile << "{\"port_number\":" << port_number << "}";
+            myfile.close();
+        }
     }
     return 0;
 }
