@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
         dev->stopCapture();
 
         std::string max_endpoint = "";
-        int cnt_max = 300;
+        int cnt_max = 150;
 
         for (pcpp::RawPacketVector::ConstVectorIterator iter = packetVec.begin(); iter != packetVec.end(); iter++)
         {
