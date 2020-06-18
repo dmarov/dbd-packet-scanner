@@ -2,6 +2,7 @@
 #include <map>
 #include <iostream>
 #include <fstream>
+#include <string>
 
 #if !defined(WIN32) && !defined(WINx64)
 #include <in.h> // this is for using ntohs() and htons() on non-Windows OS's
@@ -9,6 +10,7 @@
 
 #include "stdlib.h"
 #include "Packet.h"
+#include "EthLayer.h"
 #include "IPv4Layer.h"
 #include "UdpLayer.h"
 #include "PcapLiveDeviceList.h"
@@ -34,12 +36,9 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    pcpp::PcapLiveDevice::DeviceConfiguration config;
+    std::string device_mac_address = dev->getMacAddress().toString();
 
-    config.mode = pcpp::PcapLiveDevice::DeviceMode::Normal;
-    config.direction = pcpp::PcapLiveDevice::PcapDirection::PCPP_OUT;
-
-    if (!dev->open(config))
+    if (!dev->open())
     {
         printf("Cannot open device\n");
         exit(1);
@@ -51,7 +50,7 @@ int main(int argc, char* argv[])
     while (true) {
 
         pcpp::RawPacketVector packetVec;
-        std::map<int, int> ports;
+        std::map<std::string, int> endpoints;
 
         dev->startCapture(packetVec);
 
@@ -59,40 +58,51 @@ int main(int argc, char* argv[])
 
         dev->stopCapture();
 
-        int port_number = -1;
+        std::string max_endpoint = "";
         int cnt_max = 300;
 
         for (pcpp::RawPacketVector::ConstVectorIterator iter = packetVec.begin(); iter != packetVec.end(); iter++)
         {
             pcpp::Packet parsedPacket(*iter);
 
-            pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
+            pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
 
-            int port = ntohs(udpLayer->getUdpHeader()->portSrc);
+            std::string packet_mac = ethLayer->getSourceMac().toString();
 
-            if (ports.find(port) != ports.end()) {
-                ports[port]++;
-            } else {
-                ports[port] = 1;
+            if (packet_mac.compare(device_mac_address) == 0) {
+
+                pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
+                pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
+
+                int port = ntohs(udpLayer->getUdpHeader()->portSrc);
+                std::string ip_address = ipLayer->getSrcIpAddress().toString();
+                std::string endpoint = ip_address + ":" + std::to_string(port);
+
+                if (endpoints.find(endpoint) != endpoints.end()) {
+                    endpoints[endpoint]++;
+                } else {
+                    endpoints[endpoint] = 1;
+                }
+
             }
 
-
-            for(std::map<int, int>::const_iterator it = ports.begin(); it != ports.end(); ++it)
+            for(std::map<std::string, int>::const_iterator it = endpoints.begin(); it != endpoints.end(); ++it)
             {
                 if (it->second > cnt_max) {
 
                     cnt_max = it->second;
-                    port_number = it->first;
+                    max_endpoint = it->first;
                 }
             }
 
         }
 
-        if (port_number != -1) {
+        if (!max_endpoint.empty()) {
 
             std::ofstream myfile;
+            std::cout << "endpoint: " << max_endpoint << " ; count: " << cnt_max << std::endl;
             myfile.open(argv[1], std::ofstream::out | std::ofstream::trunc);
-            myfile << "{\"port_number\":" << port_number << "}";
+            myfile << "{\"endpoint\":\"" << max_endpoint << "\"}";
             myfile.close();
         }
     }
