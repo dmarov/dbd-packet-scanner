@@ -19,105 +19,109 @@
 int main(int argc, char* argv[])
 {
 
-    try {
-        const std::vector<pcpp::PcapLiveDevice*>& devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
-        pcpp::PcapLiveDevice* dev = NULL;
+    while (true) {
 
-        for (std::vector<pcpp::PcapLiveDevice*>::const_iterator iter = devList.begin(); iter != devList.end(); iter++)
-        {
-            if((*iter)->getDefaultGateway() != pcpp::IPv4Address::Zero) {
+        try {
 
-                dev = *iter;
+            const std::vector<pcpp::PcapLiveDevice*>& devList = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDevicesList();
+            pcpp::PcapLiveDevice* dev = NULL;
+
+            for (std::vector<pcpp::PcapLiveDevice*>::const_iterator iter = devList.begin(); iter != devList.end(); iter++)
+            {
+                if((*iter)->getDefaultGateway() != pcpp::IPv4Address::Zero) {
+
+                    dev = *iter;
+                }
             }
-        }
 
-        if (dev == NULL)
-        {
-            printf("Cannot find ethernet interface");
-            exit(1);
-        }
+            if (dev == NULL)
+            {
+                printf("Cannot find ethernet interface");
+                exit(1);
+            }
 
-        std::string device_mac_address = dev->getMacAddress().toString();
+            std::string device_mac_address = dev->getMacAddress().toString();
 
-        if (!dev->open())
-        {
-            printf("Cannot open device\n");
-            exit(1);
-        }
+            if (!dev->open())
+            {
+                printf("Cannot open device\n");
+                exit(1);
+            }
 
-        pcpp::ProtoFilter protocolFilter(pcpp::UDP);
-        dev->setFilter(protocolFilter);
+            pcpp::ProtoFilter protocolFilter(pcpp::UDP);
+            dev->setFilter(protocolFilter);
 
-        while (true) {
+            while (true) {
 
-            try {
+                try {
 
-                pcpp::RawPacketVector packetVec;
-                std::map<std::string, int> endpoints;
+                    pcpp::RawPacketVector packetVec;
+                    std::map<std::string, int> endpoints;
 
-                dev->startCapture(packetVec);
+                    dev->startCapture(packetVec);
 
-                PCAP_SLEEP(10);
+                    PCAP_SLEEP(10);
 
-                dev->stopCapture();
+                    dev->stopCapture();
 
-                std::string max_endpoint = "";
-                int cnt_max = 150;
+                    std::string max_endpoint = "";
+                    int cnt_max = 150;
 
-                for (pcpp::RawPacketVector::ConstVectorIterator iter = packetVec.begin(); iter != packetVec.end(); iter++)
-                {
-                    pcpp::Packet parsedPacket(*iter);
-
-                    pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
-
-                    std::string packet_mac = ethLayer->getSourceMac().toString();
-
-                    if (packet_mac.compare(device_mac_address) == 0) {
-
-                        pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
-                        pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
-
-                        int port = ntohs(udpLayer->getUdpHeader()->portSrc);
-                        std::string ip_address = ipLayer->getSrcIpAddress().toString();
-                        std::string endpoint = ip_address + ":" + std::to_string(port);
-
-                        if (endpoints.find(endpoint) != endpoints.end()) {
-                            endpoints[endpoint]++;
-                        } else {
-                            endpoints[endpoint] = 1;
-                        }
-
-                    }
-
-                    for(std::map<std::string, int>::const_iterator it = endpoints.begin(); it != endpoints.end(); ++it)
+                    for (pcpp::RawPacketVector::ConstVectorIterator iter = packetVec.begin(); iter != packetVec.end(); iter++)
                     {
-                        if (it->second > cnt_max) {
+                        pcpp::Packet parsedPacket(*iter);
 
-                            cnt_max = it->second;
-                            max_endpoint = it->first;
+                        pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
+
+                        std::string packet_mac = ethLayer->getSourceMac().toString();
+
+                        if (packet_mac.compare(device_mac_address) == 0) {
+
+                            pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
+                            pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
+
+                            int port = ntohs(udpLayer->getUdpHeader()->portSrc);
+                            std::string ip_address = ipLayer->getSrcIpAddress().toString();
+                            std::string endpoint = ip_address + ":" + std::to_string(port);
+
+                            if (endpoints.find(endpoint) != endpoints.end()) {
+                                endpoints[endpoint]++;
+                            } else {
+                                endpoints[endpoint] = 1;
+                            }
+
                         }
+
+                        for(std::map<std::string, int>::const_iterator it = endpoints.begin(); it != endpoints.end(); ++it)
+                        {
+                            if (it->second > cnt_max) {
+
+                                cnt_max = it->second;
+                                max_endpoint = it->first;
+                            }
+                        }
+
                     }
 
+                    if (!max_endpoint.empty()) {
+
+                        std::ofstream myfile;
+                        std::cout << "endpoint: " << max_endpoint << " ; count: " << cnt_max << std::endl;
+                        myfile.open(argv[1], std::ofstream::out | std::ofstream::trunc);
+                        myfile << "{\"endpoint\":\"" << max_endpoint << "\"}";
+                        myfile.close();
+                    }
+
+                } catch (std::exception& e) {
+
+                    std::cout << e.what() << std::endl;
                 }
-
-                if (!max_endpoint.empty()) {
-
-                    std::ofstream myfile;
-                    std::cout << "endpoint: " << max_endpoint << " ; count: " << cnt_max << std::endl;
-                    myfile.open(argv[1], std::ofstream::out | std::ofstream::trunc);
-                    myfile << "{\"endpoint\":\"" << max_endpoint << "\"}";
-                    myfile.close();
-                }
-
-            } catch (std::exception& e) {
-
-                std::cout << e.what() << std::endl;
             }
+
+        } catch (std::exception& e) {
+
+            std::cout << e.what() << std::endl;
         }
-
-    } catch (std::exception& e) {
-
-        std::cout << e.what() << std::endl;
     }
 
     return 0;
