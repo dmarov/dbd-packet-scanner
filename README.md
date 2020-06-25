@@ -1,6 +1,6 @@
 # Dead by daylight packet scanner
 
-##What it does
+## What it does
 It heuristically determines port on which your game traffic flows.
 
 ## How to use
